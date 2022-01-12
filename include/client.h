@@ -4,5 +4,6 @@
 #include "device.h"
 #include "io.h"
 
+
 int client_process(char *server_ip, uint16_t port);
 #endif

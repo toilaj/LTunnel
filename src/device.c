@@ -12,7 +12,7 @@ static int tun_alloc(int flags) {
 
     memset(&ifr, 0, sizeof(ifr));
     ifr.ifr_flags = flags;
-    strncpy(ifr.ifr_name, "Ltun", IFNAMSIZ);
+    strncpy(ifr.ifr_name, DEVICE_NAME, IFNAMSIZ);
 
     if((err = ioctl(fd, TUNSETIFF, (void *)&ifr)) < 0 ) {
         perror("ioctl(TUNSETIFF)");

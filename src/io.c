@@ -13,7 +13,7 @@ int read_packet(int fd, void *buffer, int length)
             if(errno == EINTR) {
                 bytes_read = 0;
             } else if(errno == EAGAIN) {
-                return -2;
+                return length - bytes_left;
             } else {
                 return -1;
             }
@@ -28,7 +28,7 @@ int read_packet(int fd, void *buffer, int length)
 
 int write_packet(int fd, void *buffer, int length)
 {
-    int bytes_left;
+    int bytes_left = length;
     int written_bytes;
     char *ptr = buffer;
     if(ptr == NULL) {
