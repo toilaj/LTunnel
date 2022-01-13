@@ -5,9 +5,12 @@ static void read_tun_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     int read_bytes;
     int write_bytes;
     int tun_fd = watcher->fd;
-    int net_fd = *(int*)(watcher->data);
+    int net_fd;
     char buf[PACKET_SIZE] = {0};
     struct packet_hdr *head;
+    struct connection *con;
+    con = (struct connection*)watcher->data;
+    net_fd = con->net_fd;
     head = (struct packet_hdr*)buf;
     read_bytes = read_packet(tun_fd, buf + sizeof(struct packet_hdr), BUF_SIZE); 
     if(read_bytes < 0) {
@@ -19,7 +22,7 @@ static void read_tun_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     head->len = read_bytes;
 
     write_bytes = write_packet(net_fd, head, PACKET_SIZE);
-    if(write_bytes <= 0) {
+    if(write_bytes < 0) {
         return;
     }  
     debug_log("TUN2NET %lu: Written %d bytes\n", tun2net, write_packet);
@@ -31,9 +34,12 @@ static void read_net_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     int read_bytes;
     int write_bytes;
     int net_fd = watcher->fd;
-    int tun_fd = *(int*)(watcher->data);
+    int tun_fd;
     char buf[PACKET_SIZE] = {0};
     struct packet_hdr *head;
+    struct connection *con;
+    con = (struct connection*)watcher->data;
+    tun_fd = con->tun_fd;
     head = (struct packet_hdr*)buf;
     read_bytes = read_packet(net_fd, buf, PACKET_SIZE); 
     if(read_bytes <= 0) {
@@ -45,7 +51,7 @@ static void read_net_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     if(write_bytes < 0) {
         return;
     }  
-    debug_log("NET2TUN %lu: Written %d bytes to the tap interface\n", net2tun, write_packet);
+    debug_log("NET2TUN %lu: Written %d bytes to the tap interface\n", net2tun, write_bytes);
 }
 
 static void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
@@ -58,14 +64,17 @@ static void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
         return;
     }
     con = watcher->data;
-    if(con->net_fd > 0 && ev_is_active(con->ev_read_net)) {
-        ev_io_stop(con->ev_loop, con->ev_read_net);
-        close(con->net_fd);
-    }
+    //if(con->net_fd > 0 && ev_is_active(con->ev_read_net)) {
+    //    ev_io_stop(con->ev_loop, con->ev_read_net);
+    //    close(con->net_fd);
+    //}
     con->net_fd = net_fd;
     tun_fd = con->tun_fd;
     set_fd_nonblock(net_fd);
     set_fd_nonblock(tun_fd);
+
+    con->ev_read_net->data = con;
+    con->ev_read_tun->data = con;
 
     ev_io_init(con->ev_read_tun, read_tun_cb, tun_fd, EV_READ);
     ev_io_init(con->ev_read_net, read_net_cb, net_fd, EV_READ);
@@ -97,6 +106,8 @@ int server_process(uint16_t port)
     struct ev_io ev_accept;
 
     struct connection con;
+
+    memset(&con, 0, sizeof(con));
 
     con.ev_read_net = &ev_read_net;
     con.ev_read_tun = &ev_read_tun;
