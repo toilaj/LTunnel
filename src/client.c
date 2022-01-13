@@ -9,7 +9,7 @@ static void read_tun_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     char buf[PACKET_SIZE] = {0};
     struct packet_hdr *head;
     head = (struct packet_hdr*)buf;
-    read_bytes = read_packet(tun_fd, buf + sizeof(struct packet_hdr), BUF_SIZE); 
+    read_bytes = read_packet(tun_fd, buf + HEADER_SIZE, BUF_SIZE); 
     if(read_bytes < 0) {
         return;
     }
@@ -18,7 +18,7 @@ static void read_tun_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     head->cmd = CMD_DATA;
     head->len = read_bytes;
 
-    write_bytes = write_packet(net_fd, head, PACKET_SIZE);
+    write_bytes = write_packet(net_fd, head, head->len + HEADER_SIZE);
     if(write_bytes < 0) {
         return;
     }  
@@ -44,7 +44,7 @@ static void read_net_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     if(write_bytes <= 0) {
         return;
     }  
-    debug_log("NET2TUN %lu: Written %d bytes to the tap interface\n", net2tun, write_packet);
+    debug_log("NET2TUN %lu: Written %d bytes to the tun interface\n", net2tun, write_bytes);
 }
 
 int client_process(char *server_ip, uint16_t port)

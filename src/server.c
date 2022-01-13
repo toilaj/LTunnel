@@ -12,7 +12,7 @@ static void read_tun_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     con = (struct connection*)watcher->data;
     net_fd = con->net_fd;
     head = (struct packet_hdr*)buf;
-    read_bytes = read_packet(tun_fd, buf + sizeof(struct packet_hdr), BUF_SIZE); 
+    read_bytes = read_packet(tun_fd, buf + HEADER_SIZE, BUF_SIZE); 
     if(read_bytes < 0) {
         return;
     }
@@ -21,11 +21,11 @@ static void read_tun_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     head->cmd = CMD_DATA;
     head->len = read_bytes;
 
-    write_bytes = write_packet(net_fd, head, PACKET_SIZE);
+    write_bytes = write_packet(net_fd, head, HEADER_SIZE + head->len);
     if(write_bytes < 0) {
         return;
     }  
-    debug_log("TUN2NET %lu: Written %d bytes\n", tun2net, write_packet);
+    debug_log("TUN2NET %lu: Written %d bytes\n", tun2net, write_bytes);
 }
 
 static void read_net_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
@@ -51,7 +51,7 @@ static void read_net_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     if(write_bytes < 0) {
         return;
     }  
-    debug_log("NET2TUN %lu: Written %d bytes to the tap interface\n", net2tun, write_bytes);
+    debug_log("NET2TUN %lu: Written %d bytes to the tun interface\n", net2tun, write_bytes);
 }
 
 static void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
@@ -64,10 +64,16 @@ static void accept_cb(struct ev_loop *loop, struct ev_io *watcher, int revents)
         return;
     }
     con = watcher->data;
-    //if(con->net_fd > 0 && ev_is_active(con->ev_read_net)) {
-    //    ev_io_stop(con->ev_loop, con->ev_read_net);
-    //    close(con->net_fd);
-    //}
+    if(con->net_fd > 0 && ev_is_active(con->ev_read_net)) {
+        ev_io_stop(con->ev_loop, con->ev_read_net);
+        close(con->net_fd);
+        ev_io_set(con->ev_read_net, net_fd, EV_READ);
+        con->net_fd = net_fd;
+        set_fd_nonblock(net_fd); 
+        ev_io_start(con->ev_loop, con->ev_read_net); 
+        debug_log("SERVER: Client reconnected, net_fd = %d, tun_fd = %d\n", net_fd, con->tun_fd);
+        return;
+    }
     con->net_fd = net_fd;
     tun_fd = con->tun_fd;
     set_fd_nonblock(net_fd);

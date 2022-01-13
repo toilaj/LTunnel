@@ -21,7 +21,8 @@
 #include "ev.h"
 
 #define BUF_SIZE (2048)
-#define PACKET_SIZE (BUF_SIZE + sizeof(struct packet_hdr))
+#define HEADER_SIZE sizeof(struct packet_hdr)
+#define PACKET_SIZE (BUF_SIZE + HEADER_SIZE)
 #define CLIENT 0
 #define SERVER 1
 #define PORT 10443
