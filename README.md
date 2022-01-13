@@ -1,2 +1,4 @@
-#LTunnel 
-tunnel example by tun interface from Internet
+# LTunnel 
+
+Tunnel example by tun interface.
+It is implemented by Libev.
