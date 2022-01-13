@@ -28,7 +28,7 @@ void usage(void)
     fprintf(stderr, "-s|-c <serverIP>: run in server mode (-s), or run in client mode (-c <serverIP>)\n");
     fprintf(stderr, "-p <port>:listen on the port (run in server mode) or connect to the port (run in client mode), default 10443\n");
     fprintf(stderr, "-v: outputs debug log while running\n");
-    fprintf(stderr, "-d: daemon mode");
+    fprintf(stderr, "-d: daemon mode\n");
     fprintf(stderr, "-h: prints this help text\n");
     exit(1);
 }
