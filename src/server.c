@@ -12,8 +12,9 @@ static void read_tun_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     con = (struct connection*)watcher->data;
     net_fd = con->net_fd;
     head = (struct packet_hdr*)buf;
-    read_bytes = read_packet(tun_fd, buf + HEADER_SIZE, BUF_SIZE); 
-    if(read_bytes < 0) {
+    read_bytes = read_packet(tun_fd, head->buf, BUF_SIZE, FLAG_READ_POSSIBLE); 
+    if(read_bytes <= 0) {
+        debug_log("TUN2NET cannot read packet: errno = %d\n", errno);
         return;
     }
     tun2net++;
@@ -22,7 +23,8 @@ static void read_tun_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     head->len = read_bytes;
 
     write_bytes = write_packet(net_fd, head, HEADER_SIZE + head->len);
-    if(write_bytes < 0) {
+    if(write_bytes <= 0) {
+        debug_log("TUN2NET cannot write packet: errno = %d\n", errno);
         return;
     }  
     debug_log("TUN2NET %lu: Written %d bytes\n", tun2net, write_bytes);
@@ -38,17 +40,43 @@ static void read_net_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     char buf[PACKET_SIZE] = {0};
     struct packet_hdr *head;
     struct connection *con;
+    int bytes_left;
+    char *p = buf;
     con = (struct connection*)watcher->data;
     tun_fd = con->tun_fd;
     head = (struct packet_hdr*)buf;
-    read_bytes = read_packet(net_fd, buf, PACKET_SIZE); 
-    if(read_bytes <= 0) {
+    read_bytes = read_packet(net_fd, buf, HEADER_SIZE, FLAG_READ_FIX_LEN); 
+    if(read_bytes < HEADER_SIZE) {
+        debug_log("NET2TUN cannot read packet: errno = %d\n", errno);
         return;
     }
     net2tun++;
-    debug_log("NET2TUN %lu: Read %d bytes\n", net2tun, read_bytes); 
+    debug_log("NET2TUN %lu: Read head %d bytes\n", net2tun, read_bytes);
+    if(head->cmd == CMD_DATA) {
+        debug_log("NET2TUN %lu: cmd = 0x%x len = %d\n", net2tun, head->cmd, head->len);
+        bytes_left = head->len;
+        if(head->len > BUF_SIZE) {
+            debug_log("fatal len, error packet!\n");
+            return;
+        }
+        p += HEADER_SIZE;
+        while(bytes_left > 0) {
+            read_bytes = read_packet(net_fd, p, head->len, FLAG_READ_POSSIBLE); 
+            if(read_bytes <= 0) {
+                debug_log("NET2TUN cannot read data packet: errno = %d\n", errno);
+                read_bytes = 0;
+            } 
+            p += read_bytes;
+            bytes_left -= read_bytes;
+        }
+    } else {
+        debug_log("not have header, error packet!\n");
+        return;
+    }
+    debug_log("NET2TUN %lu: Read data %d bytes\n", net2tun, head->len);
     write_bytes = write_packet(tun_fd, head->buf, head->len);
-    if(write_bytes < 0) {
+    if(write_bytes <= 0) {
+        debug_log("NET2TUN cannot write packet: errno = %d\n", errno);
         return;
     }  
     debug_log("NET2TUN %lu: Written %d bytes to the tun interface\n", net2tun, write_bytes);

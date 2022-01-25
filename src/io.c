@@ -1,5 +1,5 @@
 #include "io.h"
-int read_packet(int fd, void *buffer, int length)
+int read_packet(int fd, void *buffer, int length, char flag)
 {
     int bytes_left = length;
     int bytes_read = 0;
@@ -11,9 +11,13 @@ int read_packet(int fd, void *buffer, int length)
         bytes_read = read(fd, ptr, bytes_left);
         if(bytes_read < 0) {
             if(errno == EINTR) {
-                bytes_read = 0;
+                continue;
             } else if(errno == EAGAIN) {
-                return length - bytes_left;
+                if(flag == FLAG_READ_FIX_LEN) {
+                    continue;
+                } else {
+                    return length - bytes_left;
+                }
             } else {
                 return -1;
             }

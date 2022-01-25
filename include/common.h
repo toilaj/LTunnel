@@ -31,7 +31,8 @@
 #define ETH_HDR_LEN 14
 #define ARP_PKT_LEN 28
 
-#define CMD_DATA 0x0
+#define CMD_DATA 0x22330001
+#define CMD_DATA_LEN 0x22330002
 
 
 struct packet_hdr {
