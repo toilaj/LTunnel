@@ -10,9 +10,9 @@ static void read_tun_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     struct packet_hdr *head;
     head = (struct packet_hdr*)buf;
     read_bytes = read_packet(tun_fd, head->buf, BUF_SIZE, FLAG_READ_POSSIBLE); 
-    if(read_bytes <= 0) {
-        debug_log("TUN2NET cannot read packet errno = %d\n", errno);
-        return;
+    if(read_bytes < 0) {
+        debug_log("TUN2NET cannot read packet ret = %d errno = %d\n", read_bytes, errno);
+        exit(1);
     }
     tun2net++;
     debug_log("TUN2NET %lu: Read %d bytes\n", tun2net, read_bytes);
@@ -39,9 +39,9 @@ static void read_net_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     char *p = buf;
     head = (struct packet_hdr*)buf;
     read_bytes = read_packet(net_fd, &buf, HEADER_SIZE, FLAG_READ_FIX_LEN); 
-    if(read_bytes < HEADER_SIZE) {
-        debug_log("NET2TUN cannot read packet errno = %d\n", errno);
-        return;
+    if(read_bytes <= 0) {
+        debug_log("NET2TUN cannot read packet ret = %d errno = %d\n", read_bytes, errno);
+        exit(2);
     }
     net2tun++;
     debug_log("NET2TUN %lu: Read head %d bytes\n", net2tun, read_bytes);
@@ -53,7 +53,11 @@ static void read_net_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
             return;
         }
         p += HEADER_SIZE;
-        read_bytes = read_packet(net_fd, p, head->len, FLAG_READ_FIX_LEN); 
+        read_bytes = read_packet(net_fd, p, head->len, FLAG_READ_FIX_LEN);
+        if(read_bytes <= 0) {
+            debug_log("NET2TUN cannot read data packet ret = %d errno = %d\n", read_bytes, errno);
+            exit(2);
+        }
     } else {
         debug_log("not have header, error packet!\n");
         return;

@@ -14,8 +14,8 @@ static void read_tun_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     head = (struct packet_hdr*)buf;
     read_bytes = read_packet(tun_fd, head->buf, BUF_SIZE, FLAG_READ_POSSIBLE); 
     if(read_bytes <= 0) {
-        debug_log("TUN2NET cannot read packet: errno = %d\n", errno);
-        return;
+        debug_log("TUN2NET cannot read packet: ret = %d errno = %d\n", read_bytes, errno);
+        exit(2);
     }
     tun2net++;
     debug_log("TUN2NET %lu: Read %d bytes\n", tun2net, read_bytes);
@@ -25,7 +25,7 @@ static void read_tun_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     write_bytes = write_packet(net_fd, head, HEADER_SIZE + head->len);
     if(write_bytes <= 0) {
         debug_log("TUN2NET cannot write packet: errno = %d\n", errno);
-        return;
+        exit(2);
     }  
     debug_log("TUN2NET %lu: Written %d bytes\n", tun2net, write_bytes);
 }
@@ -46,9 +46,9 @@ static void read_net_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     tun_fd = con->tun_fd;
     head = (struct packet_hdr*)buf;
     read_bytes = read_packet(net_fd, buf, HEADER_SIZE, FLAG_READ_FIX_LEN); 
-    if(read_bytes < HEADER_SIZE) {
-        debug_log("NET2TUN cannot read packet: errno = %d\n", errno);
-        return;
+    if(read_bytes <= 0) {
+        debug_log("NET2TUN cannot read packet: ret = %d errno = %d\n", read_bytes, errno);
+        exit(2);
     }
     net2tun++;
     debug_log("NET2TUN %lu: Read head %d bytes\n", net2tun, read_bytes);
@@ -61,6 +61,10 @@ static void read_net_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
         }
         p += HEADER_SIZE;
         read_bytes = read_packet(net_fd, p, head->len, FLAG_READ_FIX_LEN); 
+        if(read_bytes <= 0) {
+            debug_log("NET2TUN cannot read packet: ret = %d errno = %d\n", read_bytes, errno);
+            exit(2);
+        }
     } else {
         debug_log("not have header, error packet!\n");
         return;
@@ -69,7 +73,7 @@ static void read_net_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
     write_bytes = write_packet(tun_fd, head->buf, head->len);
     if(write_bytes <= 0) {
         debug_log("NET2TUN cannot write packet: errno = %d\n", errno);
-        return;
+        exit(2);
     }  
     debug_log("NET2TUN %lu: Written %d bytes to the tun interface\n", net2tun, write_bytes);
 }

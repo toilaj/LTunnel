@@ -22,7 +22,7 @@ int read_packet(int fd, void *buffer, int length, char flag)
                 return -1;
             }
         } else if(bytes_read == 0) {
-            break;
+            return -2;
         }
         bytes_left -= bytes_read;
         ptr += bytes_read;
@@ -41,8 +41,8 @@ int write_packet(int fd, void *buffer, int length)
     while(bytes_left > 0) {
         written_bytes = write(fd, ptr, bytes_left);
         if(written_bytes <= 0) {
-            if(errno == EINTR) {
-                written_bytes = 0;
+            if(errno == EINTR || errno == EAGAIN) {
+                continue;
             } else {
                 return -1;
             }
