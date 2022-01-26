@@ -27,12 +27,9 @@
 #define SERVER 1
 #define PORT 10443
 
-#define IP_HDR_LEN 20
-#define ETH_HDR_LEN 14
-#define ARP_PKT_LEN 28
+#define TUN_MTU (1500)
 
-#define CMD_DATA 0x22330001
-#define CMD_DATA_LEN 0x22330002
+#define CMD_DATA (0x22330001)
 
 
 struct packet_hdr {
@@ -81,6 +78,9 @@ inline static int iface_configure(char* ifname, unsigned char *ip, unsigned char
     
     inet_aton(mask, &(sin->sin_addr));
     res |= ioctl(fd, SIOCSIFNETMASK, &ifr);
+
+    ifr.ifr_ifru.ifru_mtu = 1500;
+    res |= ioctl(fd, SIOCSIFMTU, &ifr);
 
     close(fd);
     return res;
