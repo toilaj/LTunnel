@@ -20,7 +20,7 @@
 
 #include "ev.h"
 
-#define BUF_SIZE (2048)
+#define BUF_SIZE (1500)
 #define HEADER_SIZE sizeof(struct packet_hdr)
 #define PACKET_SIZE (BUF_SIZE + HEADER_SIZE)
 #define CLIENT 0

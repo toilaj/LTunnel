@@ -53,16 +53,7 @@ static void read_net_cb(struct ev_loop *loop, struct ev_io *watcher, int revents
             return;
         }
         p += HEADER_SIZE;
-        while(bytes_left > 0) {
-            read_bytes = read_packet(net_fd, p, head->len, FLAG_READ_POSSIBLE); 
-            if(read_bytes <= 0) {
-                debug_log("NET2TUN cannot read data packet: errno = %d\n", errno);
-                read_bytes = 0;
-                //return;
-            } 
-            p += read_bytes;
-            bytes_left -= read_bytes;
-        }
+        read_bytes = read_packet(net_fd, p, head->len, FLAG_READ_FIX_LEN); 
     } else {
         debug_log("not have header, error packet!\n");
         return;
